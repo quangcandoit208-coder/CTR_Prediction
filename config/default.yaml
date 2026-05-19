@@ -1,0 +1,72 @@
+project:
+  name: ctr-avazu-nafi
+  seed: 42
+  mode: small
+
+paths:
+  raw_train_gz: data/raw/train.gz
+  processed_dir: data/processed
+  output_dir: outputs
+
+data:
+  target_col: click
+  id_col: id
+  compression: gzip
+  chunksize: 200000
+  train_ratio: 0.8
+  valid_ratio: 0.1
+  test_ratio: 0.1
+  parquet_rows_per_file: 1000000
+  drop_id: true
+  parse_hour: true
+  use_hashing: true
+  max_rows: 3000000
+
+features:
+  categorical_cols: [hour, C1, banner_pos, site_id, site_domain, site_category, app_id, app_domain, app_category, device_id, device_ip, device_model, device_type, device_conn_type, C14, C15, C16, C17, C18, C19, C20, C21]
+  derived_cols: [day, hour_of_day, weekday]
+  hash_bucket_default: 100000
+  hash_buckets:
+    device_ip: 1000000
+    device_id: 500000
+    device_model: 200000
+    site_category: 100
+    app_category: 100
+    day: 31
+    hour_of_day: 24
+    weekday: 7
+
+model:
+  name: nafi
+  embedding_dim: 16
+  hidden_units: [128, 64, 32]
+  dropout: 0.2
+
+nam:
+  hidden_units: [32, 16]
+  dropout: 0.1
+
+fin:
+  num_heads: 4
+  num_layers: 2
+  attention_dropout: 0.1
+  use_residual: true
+
+training:
+  batch_size: 2048
+  epochs: 2
+  learning_rate: 0.001
+  gradient_accumulation_steps: 1
+  mixed_precision: true
+  max_grad_norm: 5.0
+  early_stopping:
+    enabled: true
+    patience: 2
+
+environment:
+  num_workers: 2
+  pin_memory: true
+
+checkpoint:
+  save_best_only: true
+
