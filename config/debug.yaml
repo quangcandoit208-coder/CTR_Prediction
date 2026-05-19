@@ -4,9 +4,9 @@ project:
   mode: debug
 
 paths:
-  raw_train_gz: data/raw/train.gz
-  processed_dir: data/processed_debug
-  output_dir: outputs
+  raw_train_gz: /kaggle/input/competitions/avazu-ctr-prediction/train.gz
+  processed_dir: /kaggle/working/data/processed_debug
+  output_dir: /kaggle/working/outputs
 
 data:
   target_col: click

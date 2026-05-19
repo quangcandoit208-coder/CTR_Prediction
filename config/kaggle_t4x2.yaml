@@ -12,7 +12,7 @@ environment:
   pin_memory: true
 
 paths:
-  raw_train_gz: /kaggle/input/avazu-ctr-prediction/train.gz
+  raw_train_gz: /kaggle/input/competitions/avazu-ctr-prediction/train.gz
   processed_dir: /kaggle/working/data/processed
   output_dir: /kaggle/working/outputs
 
