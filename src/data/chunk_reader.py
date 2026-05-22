@@ -18,10 +18,12 @@ class GzipChunkReader:
         path: str | Path,
         chunksize: int,
         dtype_map: dict[str, str] | None = None,
+        max_rows: int | None = None,
     ) -> None:
         self.path = Path(path)
         self.chunksize = chunksize
         self.dtype_map = dtype_map or DTYPE_MAP
+        self.max_rows = max_rows
         self.logger = get_logger(self.__class__.__name__)
 
     def __iter__(self) -> Iterator[pd.DataFrame]:
@@ -35,6 +37,7 @@ class GzipChunkReader:
                 compression="gzip",
                 chunksize=self.chunksize,
                 dtype=self.dtype_map,
+                nrows=self.max_rows,
             )
             for chunk_idx, chunk in enumerate(reader):
                 total_rows += len(chunk)
@@ -48,4 +51,3 @@ class GzipChunkReader:
                 yield chunk
         except Exception as exc:
             raise RuntimeError(f"Failed while reading {self.path}: {exc}") from exc
-

@@ -65,7 +65,12 @@ def convert_gz_to_parquet(raw_path: str | Path, output_dir: str | Path, config: 
     for split in split_files:
         (output_dir / split).mkdir(parents=True, exist_ok=True)
 
-    reader = GzipChunkReader(raw_path, chunksize=chunksize, dtype_map=DTYPE_MAP)
+    reader = GzipChunkReader(
+        raw_path,
+        chunksize=chunksize,
+        dtype_map=DTYPE_MAP,
+        max_rows=int(max_rows) if max_rows is not None else None,
+    )
     for chunk_idx, chunk in enumerate(reader):
         if max_rows is not None:
             remaining = int(max_rows) - total_rows

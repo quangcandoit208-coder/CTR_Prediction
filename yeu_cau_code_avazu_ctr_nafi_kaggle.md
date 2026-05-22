@@ -7,6 +7,7 @@ File này là đặc tả yêu cầu để đưa vào AI Code nhằm sinh source
 Project cần được viết theo dạng **module hóa**, chạy được trên **Kaggle Notebook** với phần cứng:
 
 - Platform: Kaggle
+- Framework: Pytorch
 - GPU: NVIDIA Tesla T4 x2
 - VRAM: 16GB/GPU
 - RAM hệ thống: giới hạn theo Kaggle
@@ -316,7 +317,7 @@ Mục tiêu:
 Project cần viết dạng module, không viết toàn bộ trong một notebook duy nhất.
 
 Cấu trúc thư mục yêu cầu:
-
+Chỉ cần code ra model NAFI
 ```text
 ctr-avazu-nafi/
 │
@@ -671,22 +672,12 @@ Output:
 
 ## 9.1 Model baseline bắt buộc
 
-Cần có ít nhất các model:
+Chỉ cần model NAFI:
 
 ```text
-LR
-FM
-DeepFM
-AutoInt
-NAM
 NAFI
 ```
 
-Ưu tiên thêm:
-
-```text
-KD-NAFI
-```
 
 ## 9.2 Embedding layer chung
 
@@ -810,29 +801,7 @@ Output forward:
 }
 ```
 
-## 9.6 KD-NAFI
 
-File:
-
-```text
-src/models/kd_nafi.py
-```
-
-Yêu cầu optional:
-
-- Teacher models:
-  - DeepFM
-  - xDeepFM nếu implement
-  - AutoInt
-- Student:
-  - NAFI nhỏ hơn hoặc NAFI distilled.
-
-Loss:
-
-```text
-loss = alpha * BCE(student_logits, hard_labels)
-     + (1 - alpha) * KD_loss(student_logits/T, teacher_logits/T)
-```
 
 Config:
 
@@ -1013,12 +982,7 @@ python scripts/train.py --config config/kaggle_t4x2.yaml --model nafi
 
 Tham số:
 
-```bash
---model lr
---model fm
---model deepfm
---model autoint
---model nam
+```
 --model nafi
 ```
 
@@ -1049,6 +1013,7 @@ Cần log ra console và file:
 outputs/logs/train.log
 outputs/logs/prepare_data.log
 ```
+Log đầu tiên là số lượng tham số
 
 Mỗi log nên có:
 
@@ -1363,3 +1328,4 @@ cuối cùng mới chạy:
 ```text
 mode: full
 ```
+# 23. Tạo thêm script để test model pass

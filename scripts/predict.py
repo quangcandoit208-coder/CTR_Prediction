@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pandas as pd
 import torch
-from torch.cuda.amp import autocast
 
 from src.models.base import build_model
 from src.training.checkpoint import load_checkpoint
@@ -43,7 +42,7 @@ def main() -> None:
     for path in metadata["split_files"][args.split]:
         df = pd.read_parquet(path, columns=metadata["feature_cols"])
         x = torch.as_tensor(df[metadata["feature_cols"]].to_numpy(), dtype=torch.long, device=device)
-        with autocast(enabled=use_amp):
+        with torch.amp.autocast(device_type=device.type, enabled=use_amp):
             logits = model(x)["logits"]
         part_probs = torch.sigmoid(logits).detach().float().cpu().numpy().tolist()
         probs.extend(part_probs)
@@ -58,4 +57,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

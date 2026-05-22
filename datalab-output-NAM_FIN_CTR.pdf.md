@@ -644,7 +644,7 @@ Published online: 26 September 2025
 7. Hinton GE, Salakhutdinov RR. Reducing the dimensionality of data with neural networks. Science. 2006;313(5786):504–7.
 8. Francq P, Fouss F. Introduction Recommender Syst, 2011, pp. 1–35.
 9. Chen C, Xia F, Tong Z et al. Gradient boosting factorization machines, Proceedings of the 8th ACM Conference on Recommender systems, 2014;265–272.
-10. Hong F, Huang D, Ge C. Interaction-aware factorization machines for recommender systems, Proceedings of the AAAI Conference on Artificial Intelligence, 2019;3804–3811.
+10. Hong F, Huang D, Ge C. Interaction-aware factorization machines for recommfender systems, Proceedings of the AAAI Conference on Artificial Intelligence, 2019;3804–3811.
 11. Xu C, Wu M. Learning feature interactions with lorentzian factorization machine, Proceedings of the AAAI Conference on Artificial Intelligence, 2020;6470–6477.
 12. Juan Y, Zhuang Y, Chin WS et al. Field-aware factorization machines for CTR prediction, Proceedings of the 10th ACM Conference on Recommender Systems, 2016;43–50.
 
