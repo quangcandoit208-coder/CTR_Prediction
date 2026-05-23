@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import torch
 
+from src.data.metadata import load_metadata
 from src.models.base import build_model
 from src.training.checkpoint import load_checkpoint
 from src.utils.config import ensure_dirs, load_config
@@ -18,6 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--split", default="test", choices=["valid", "test"])
+    parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
     return parser.parse_args()
 
 
@@ -25,10 +27,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
+    if args.processed_dir:
+        config.setdefault("paths", {})["processed_dir"] = args.processed_dir
     ensure_dirs(config)
-    metadata_path = Path(config["paths"]["processed_dir"]) / "metadata.json"
-    with metadata_path.open("r", encoding="utf-8") as f:
-        metadata = json.load(f)
+    metadata = load_metadata(config["paths"]["processed_dir"])
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_model(config.get("model", {}).get("name", "nafi"), metadata["field_dims"], config).to(device)

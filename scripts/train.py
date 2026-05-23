@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.data.dataloader import make_dataloader
 from src.data.dataset import AvazuParquetDataset
+from src.data.metadata import load_metadata
 from src.models.base import build_model
 from src.training.trainer import CTRTrainer
 from src.utils.config import ensure_dirs, load_config
@@ -18,20 +19,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a CTR model.")
     parser.add_argument("--config", required=True, help="Path to YAML config")
     parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "autoint", "nam", "nafi", "kd_nafi"])
+    parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
     return parser.parse_args()
-
-
-def load_metadata(processed_dir: str | Path) -> dict:
-    metadata_path = Path(processed_dir) / "metadata.json"
-    if not metadata_path.exists():
-        raise FileNotFoundError(f"Missing metadata. Run scripts/prepare_avazu.py first: {metadata_path}")
-    with metadata_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
+    if args.processed_dir:
+        config.setdefault("paths", {})["processed_dir"] = args.processed_dir
     ensure_dirs(config)
     seed_everything(int(config.get("project", {}).get("seed", 42)))
     model_name = args.model or config.get("model", {}).get("name", "nafi")

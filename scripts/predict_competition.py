@@ -9,6 +9,7 @@ import pandas as pd
 import torch
 
 from src.data.preprocess import clean_chunk
+from src.data.metadata import load_metadata
 from src.data.schema import DTYPE_MAP
 from src.features.hashing import hash_features
 from src.models.base import build_model
@@ -27,15 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "autoint", "nam", "nafi", "kd_nafi"])
     parser.add_argument("--chunksize", type=int, default=None, help="Rows per gzip chunk")
     parser.add_argument("--batch-size", type=int, default=None, help="Inference batch size")
+    parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
     return parser.parse_args()
-
-
-def load_metadata(processed_dir: str | Path) -> dict[str, Any]:
-    metadata_path = Path(processed_dir) / "metadata.json"
-    if not metadata_path.exists():
-        raise FileNotFoundError(f"Missing metadata from train preprocessing: {metadata_path}")
-    with metadata_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
 
 
 def predict_chunk(
@@ -60,6 +54,8 @@ def predict_chunk(
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
+    if args.processed_dir:
+        config.setdefault("paths", {})["processed_dir"] = args.processed_dir
     ensure_dirs(config)
 
     logger = get_logger(

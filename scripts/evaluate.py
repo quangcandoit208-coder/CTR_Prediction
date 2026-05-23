@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.data.dataloader import make_dataloader
 from src.data.dataset import AvazuParquetDataset
+from src.data.metadata import load_metadata
 from src.evaluation.evaluate import evaluate_model
 from src.evaluation.report import save_metrics_report
 from src.models.base import build_model
@@ -18,16 +19,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True)
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--split", default="valid", choices=["train", "valid", "test"])
+    parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
+    if args.processed_dir:
+        config.setdefault("paths", {})["processed_dir"] = args.processed_dir
     ensure_dirs(config)
-    metadata_path = Path(config["paths"]["processed_dir"]) / "metadata.json"
-    with metadata_path.open("r", encoding="utf-8") as f:
-        metadata = json.load(f)
+    metadata = load_metadata(config["paths"]["processed_dir"])
     dataset = AvazuParquetDataset(metadata["split_files"][args.split], metadata["feature_cols"], metadata["target_col"])
     loader = make_dataloader(
         dataset,
@@ -46,4 +48,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
