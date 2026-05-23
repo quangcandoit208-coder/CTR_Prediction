@@ -13,6 +13,7 @@ environment:
 
 paths:
   raw_train_gz: /kaggle/input/competitions/avazu-ctr-prediction/train.gz
+  raw_test_gz: /kaggle/input/competitions/avazu-ctr-prediction/test.gz
   processed_dir: /kaggle/working/data/processed
   output_dir: /kaggle/working/outputs
 
@@ -85,7 +86,9 @@ model:
 nam:
   enabled: true
   hidden_units: [32, 16]
-  activation: relu
+  activation: exu
+  exu_max_value: 1.0
+  exu_weight_clip: 10.0
   dropout: 0.1
 
 fin:
@@ -127,4 +130,3 @@ checkpoint:
   save_best_only: true
   monitor: valid_auc
   mode: max
-

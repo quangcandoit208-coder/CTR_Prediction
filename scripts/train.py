@@ -9,6 +9,8 @@ from src.data.dataset import AvazuParquetDataset
 from src.models.base import build_model
 from src.training.trainer import CTRTrainer
 from src.utils.config import ensure_dirs, load_config
+from src.utils.logger import get_logger
+from src.utils.model_stats import count_parameters, format_parameter_count
 from src.utils.seed import seed_everything
 
 
@@ -60,6 +62,28 @@ def main() -> None:
     train_loader = make_dataloader(train_dataset, batch_size, num_workers=num_workers, pin_memory=pin_memory)
     valid_loader = make_dataloader(valid_dataset, batch_size, num_workers=num_workers, pin_memory=pin_memory)
     model = build_model(model_name, metadata["field_dims"], config)
+
+    logger = get_logger("train", Path(config.get("paths", {}).get("output_dir", "outputs")) / "logs" / "train.log")
+    param_counts = count_parameters(model)
+    logger.info(
+        "model=%s total_params=%s trainable_params=%s non_trainable_params=%s",
+        model_name,
+        format_parameter_count(param_counts["total"]),
+        format_parameter_count(param_counts["trainable"]),
+        format_parameter_count(param_counts["non_trainable"]),
+    )
+    print(
+        json.dumps(
+            {
+                "model": model_name,
+                "total_params": param_counts["total"],
+                "trainable_params": param_counts["trainable"],
+                "non_trainable_params": param_counts["non_trainable"],
+            },
+            indent=2,
+        )
+    )
+
     trainer = CTRTrainer(model, train_loader, valid_loader, config)
     history = trainer.fit()
     print(json.dumps(history[-1] if history else {}, indent=2))
@@ -67,4 +91,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

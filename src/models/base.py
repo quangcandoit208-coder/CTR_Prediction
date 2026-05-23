@@ -21,6 +21,9 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
     embedding_dim = int(model_cfg.get("embedding_dim", 16))
     hidden_units = list(model_cfg.get("hidden_units", [128, 64, 32]))
     dropout = float(model_cfg.get("dropout", 0.2))
+    nam_activation = str(nam_cfg.get("activation", "relu"))
+    exu_max_value = float(nam_cfg.get("exu_max_value", 1.0))
+    exu_weight_clip = float(nam_cfg.get("exu_weight_clip", 10.0))
 
     if name == "lr":
         return LR(field_dims)
@@ -42,6 +45,9 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
             embedding_dim=embedding_dim,
             hidden_units=list(nam_cfg.get("hidden_units", [32, 16])),
             dropout=float(nam_cfg.get("dropout", 0.1)),
+            activation=nam_activation,
+            exu_max_value=exu_max_value,
+            exu_weight_clip=exu_weight_clip,
         )
     if name == "nafi":
         return NAFI(
@@ -53,6 +59,9 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
             nam_dropout=float(nam_cfg.get("dropout", 0.1)),
             fin_dropout=float(fin_cfg.get("attention_dropout", 0.1)),
             use_residual=bool(fin_cfg.get("use_residual", True)),
+            nam_activation=nam_activation,
+            exu_max_value=exu_max_value,
+            exu_weight_clip=exu_weight_clip,
         )
     if name in {"kd_nafi", "kd-nafi"}:
         return KDNAFI(
@@ -64,6 +73,8 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
             nam_dropout=float(nam_cfg.get("dropout", 0.1)),
             fin_dropout=float(fin_cfg.get("attention_dropout", 0.1)),
             use_residual=bool(fin_cfg.get("use_residual", True)),
+            nam_activation=nam_activation,
+            exu_max_value=exu_max_value,
+            exu_weight_clip=exu_weight_clip,
         )
     raise ValueError(f"Unknown model: {name}")
-

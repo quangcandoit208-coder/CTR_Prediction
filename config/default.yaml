@@ -5,6 +5,7 @@ project:
 
 paths:
   raw_train_gz: data/raw/train.gz
+  raw_test_gz: data/raw/test.gz
   processed_dir: data/processed
   output_dir: outputs
 
@@ -44,6 +45,9 @@ model:
 
 nam:
   hidden_units: [32, 16]
+  activation: exu
+  exu_max_value: 1.0
+  exu_weight_clip: 10.0
   dropout: 0.1
 
 fin:
@@ -69,4 +73,3 @@ environment:
 
 checkpoint:
   save_best_only: true
-
