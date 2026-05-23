@@ -14,7 +14,7 @@ environment:
 paths:
   raw_train_gz: /kaggle/input/competitions/avazu-ctr-prediction/train.gz
   raw_test_gz: /kaggle/input/competitions/avazu-ctr-prediction/test.gz
-  processed_dir: /kaggle/working/data/processed
+  processed_dir: /kaggle/input/datasets/w4ngggg/data-processed/data/processed
   output_dir: /kaggle/working/outputs
 
 data:
