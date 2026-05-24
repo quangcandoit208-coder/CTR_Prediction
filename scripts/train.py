@@ -11,7 +11,7 @@ from src.models.base import build_model
 from src.training.trainer import CTRTrainer
 from src.utils.config import ensure_dirs, load_config
 from src.utils.logger import get_logger
-from src.utils.model_stats import count_parameters, format_parameter_count
+from src.utils.model_stats import count_named_children_parameters, count_parameters, format_parameter_count
 from src.utils.seed import seed_everything
 
 
@@ -68,16 +68,27 @@ def main() -> None:
         format_parameter_count(param_counts["trainable"]),
         format_parameter_count(param_counts["non_trainable"]),
     )
-    print(
-        json.dumps(
-            {
-                "model": model_name,
-                "total_params": param_counts["total"],
-                "trainable_params": param_counts["trainable"],
-                "non_trainable_params": param_counts["non_trainable"],
-            },
-            indent=2,
+    branch_param_counts = count_named_children_parameters(model, ["embedding", "nam", "fin"])
+    for branch_name, counts in branch_param_counts.items():
+        logger.info(
+            "model=%s branch=%s total_params=%s trainable_params=%s non_trainable_params=%s",
+            model_name,
+            branch_name,
+            format_parameter_count(counts["total"]),
+            format_parameter_count(counts["trainable"]),
+            format_parameter_count(counts["non_trainable"]),
         )
+
+    param_summary = {
+        "model": model_name,
+        "total_params": param_counts["total"],
+        "trainable_params": param_counts["trainable"],
+        "non_trainable_params": param_counts["non_trainable"],
+    }
+    if branch_param_counts:
+        param_summary["branches"] = branch_param_counts
+    print(
+        json.dumps(param_summary, indent=2)
     )
 
     trainer = CTRTrainer(model, train_loader, valid_loader, config)

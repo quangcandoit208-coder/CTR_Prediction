@@ -30,9 +30,25 @@ features:
   hash_buckets:
     device_ip: 100000
     device_id: 50000
-    device_model: 20000
-    site_category: 100
-    app_category: 100
+    device_model: 10000
+    site_id: 10000
+    site_domain: 10000
+    app_id: 10000
+    app_domain: 1000
+    C14: 5000
+    C17: 1000
+    C20: 512
+    C19: 128
+    C21: 128
+    site_category: 64
+    app_category: 64
+    C1: 8
+    banner_pos: 8
+    C15: 16
+    C16: 16
+    C18: 8
+    device_type: 8
+    device_conn_type: 8
     day: 31
     hour_of_day: 24
     weekday: 7
