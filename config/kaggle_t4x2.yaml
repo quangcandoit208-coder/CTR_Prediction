@@ -61,7 +61,7 @@ features:
     - day
     - hour_of_day
     - weekday
-  hash_bucket_default: 10000
+  hash_bucket_default: 100000
   hash_buckets:
     device_ip: 1000000
     device_id: 500000
@@ -120,7 +120,7 @@ distillation:
 
 training:
   batch_size: 2048
-  epochs: 5
+  epochs: 10
   optimizer: adam
   learning_rate: 0.001
   loss: bce_with_logits
