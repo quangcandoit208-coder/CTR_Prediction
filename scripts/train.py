@@ -18,8 +18,9 @@ from src.utils.seed import seed_everything
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a CTR model.")
     parser.add_argument("--config", required=True, help="Path to YAML config")
-    parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "autoint", "nam", "nafi", "kd_nafi"])
+    parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"])
     parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
+    parser.add_argument("--output-dir", default=None, help="Override output directory")
     return parser.parse_args()
 
 
@@ -28,6 +29,8 @@ def main() -> None:
     config = load_config(args.config)
     if args.processed_dir:
         config.setdefault("paths", {})["processed_dir"] = args.processed_dir
+    if args.output_dir:
+        config.setdefault("paths", {})["output_dir"] = args.output_dir
     ensure_dirs(config)
     seed_everything(int(config.get("project", {}).get("seed", 42)))
     model_name = args.model or config.get("model", {}).get("name", "nafi")

@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-csv", required=True, nargs="+", help="Train CSV file path(s)")
     parser.add_argument("--valid-csv", required=True, nargs="+", help="Valid CSV file path(s)")
     parser.add_argument("--test-csv", nargs="+", default=None, help="Optional labeled test CSV file path(s)")
-    parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "autoint", "nam", "nafi", "kd_nafi"])
+    parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"])
     parser.add_argument("--chunksize", type=int, default=None, help="CSV rows per chunk")
     parser.add_argument("--batch-size", type=int, default=None, help="Training batch size")
     parser.add_argument("--num-workers", type=int, default=0, help="Use 0 for one large CSV to avoid repeated scans")
@@ -168,4 +168,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

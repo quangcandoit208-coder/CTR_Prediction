@@ -11,6 +11,7 @@ from src.models.kd_nafi import KDNAFI
 from src.models.lr import LR
 from src.models.nafi import NAFI
 from src.models.nam import NAM
+from src.models.xdeepfm import xDeepFM
 
 
 def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.Module:
@@ -24,6 +25,7 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
     nam_activation = str(nam_cfg.get("activation", "relu"))
     exu_max_value = float(nam_cfg.get("exu_max_value", 1.0))
     exu_weight_clip = float(nam_cfg.get("exu_weight_clip", 10.0))
+    xdeepfm_cfg = config.get("xdeepfm", {})
 
     if name == "lr":
         return LR(field_dims)
@@ -31,6 +33,14 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
         return FM(field_dims, embedding_dim=embedding_dim)
     if name == "deepfm":
         return DeepFM(field_dims, embedding_dim=embedding_dim, hidden_units=hidden_units, dropout=dropout)
+    if name == "xdeepfm":
+        return xDeepFM(
+            field_dims,
+            embedding_dim=embedding_dim,
+            cin_layers=list(xdeepfm_cfg.get("cin_layers", [16, 16])),
+            hidden_units=hidden_units,
+            dropout=dropout,
+        )
     if name == "autoint":
         return AutoInt(
             field_dims,

@@ -56,6 +56,16 @@ fin:
   attention_dropout: 0.1
   use_residual: true
 
+xdeepfm:
+  cin_layers: [8, 8]
+
+distillation:
+  enabled: false
+  temperature: 4.0
+  alpha: 0.5
+  ensemble_mode: uniform
+  teacher_models: [deepfm, xdeepfm, autoint]
+
 training:
   batch_size: 1024
   epochs: 1

@@ -23,3 +23,16 @@ def binary_kd_loss(
     soft_loss = F.binary_cross_entropy_with_logits(student_logits / temperature, teacher_probs)
     return alpha * hard_loss + (1.0 - alpha) * (temperature**2) * soft_loss
 
+
+def binary_kd_loss_from_teacher_probs(
+    student_logits: torch.Tensor,
+    teacher_probs: torch.Tensor,
+    hard_labels: torch.Tensor,
+    temperature: float = 4.0,
+    alpha: float = 0.5,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    hard_loss = F.binary_cross_entropy_with_logits(student_logits, hard_labels)
+    soft_loss = F.binary_cross_entropy_with_logits(student_logits / temperature, teacher_probs)
+    loss = alpha * hard_loss + (1.0 - alpha) * (temperature**2) * soft_loss
+    return loss, hard_loss, soft_loss
+
