@@ -13,6 +13,8 @@ from src.models.base import build_model
 from src.training.checkpoint import load_checkpoint
 from src.utils.config import ensure_dirs, load_config
 
+MODEL_CHOICES = ["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate a CTR model checkpoint.")
@@ -20,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--split", default="valid", choices=["train", "valid", "test"])
     parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
+    parser.add_argument("--model", default=None, choices=MODEL_CHOICES, help="Override model architecture")
     return parser.parse_args()
 
 
@@ -37,7 +40,7 @@ def main() -> None:
         num_workers=int(config.get("environment", {}).get("num_workers", 0)),
         pin_memory=bool(config.get("environment", {}).get("pin_memory", True)),
     )
-    model_name = config.get("model", {}).get("name", "nafi")
+    model_name = args.model or config.get("model", {}).get("name", "nafi")
     model = build_model(model_name, metadata["field_dims"], config)
     load_checkpoint(args.checkpoint, model)
     metrics = evaluate_model(model, loader, config)
