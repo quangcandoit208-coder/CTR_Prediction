@@ -64,6 +64,9 @@ distillation:
   temperature: 4.0
   alpha: 0.5
   ensemble_mode: uniform
+  adaptive_hidden_units: [4]
+  adaptive_learning_rate: 0.001
+  adaptive_loss_weight: 1.0
   teacher_models: [deepfm, xdeepfm, autoint]
 
 training:

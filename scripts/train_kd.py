@@ -40,9 +40,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional fixed teacher weights, same order as --teacher.",
     )
-    parser.add_argument("--ensemble-mode", default=None, choices=["uniform", "fixed", "confidence"])
+    parser.add_argument("--ensemble-mode", default=None, choices=["uniform", "fixed", "confidence", "learned"])
     parser.add_argument("--temperature", type=float, default=None)
     parser.add_argument("--alpha", type=float, default=None)
+    parser.add_argument("--adaptive-hidden-units", type=int, nargs="*", default=None)
+    parser.add_argument("--adaptive-learning-rate", type=float, default=None)
+    parser.add_argument("--adaptive-loss-weight", type=float, default=None)
     return parser.parse_args()
 
 
@@ -93,6 +96,12 @@ def main() -> None:
         distill_cfg["alpha"] = args.alpha
     if args.ensemble_mode is not None:
         distill_cfg["ensemble_mode"] = args.ensemble_mode
+    if args.adaptive_hidden_units is not None:
+        distill_cfg["adaptive_hidden_units"] = args.adaptive_hidden_units
+    if args.adaptive_learning_rate is not None:
+        distill_cfg["adaptive_learning_rate"] = args.adaptive_learning_rate
+    if args.adaptive_loss_weight is not None:
+        distill_cfg["adaptive_loss_weight"] = args.adaptive_loss_weight
     ensemble_mode = distill_cfg.get("ensemble_mode", "uniform")
     if args.teacher_weight is not None and len(args.teacher_weight) > 0:
         ensemble_mode = "fixed"
@@ -138,6 +147,7 @@ def main() -> None:
         device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         mode=ensemble_mode,
         weights=args.teacher_weight,
+        adaptive_hidden_units=list(distill_cfg.get("adaptive_hidden_units", [8])),
     )
 
     trainer = KDCTRTrainer(student, teacher_ensemble, train_loader, valid_loader, config)
@@ -147,4 +157,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

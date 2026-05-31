@@ -84,7 +84,26 @@ This computes per-sample teacher weights from teacher confidence:
 --ensemble-mode confidence
 ```
 
-## 5. Loss
+## 5. Learned Adaptive Weighting
+
+To match the paper formula:
+
+```text
+alpha_i = exp(f(Z_i)) / sum_i exp(f(Z_i))
+```
+
+use:
+
+```bash
+--ensemble-mode learned \
+--adaptive-hidden-units 8 \
+--adaptive-learning-rate 0.001 \
+--adaptive-loss-weight 1.0
+```
+
+In this mode, the frozen teacher logits `Z_i` are passed through a small learned mapper `f`, then softmaxed across teachers to get sample-wise teacher weights. The mapper is trained with a hard-label ensemble loss while the student is trained with KD loss.
+
+## 6. Loss
 
 Training objective:
 
@@ -99,7 +118,17 @@ where:
 teacher_probs_T = ensemble(sigmoid(teacher_logits / T))
 ```
 
-## 6. Evaluate
+For the current implementation, the soft KD term is implemented as the paper-style 2-class softmax KL:
+
+```text
+loss = alpha * BCE(student_logits, hard_labels)
+     + (1 - alpha) * T^2 * KL(
+           softmax(teacher_logits_2class / T),
+           softmax(student_logits_2class / T)
+       )
+```
+
+## 7. Evaluate
 
 ```bash
 python -m scripts.evaluate \
