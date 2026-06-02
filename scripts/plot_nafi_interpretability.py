@@ -20,7 +20,7 @@ from src.training.checkpoint import load_checkpoint
 from src.utils.config import ensure_dirs, load_config
 
 
-MODEL_CHOICES = ["nafi", "kd_nafi", "autoint"]
+MODEL_CHOICES = ["nafi", "kanfin", "kd_nafi", "autoint"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -102,4 +102,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -18,7 +18,7 @@ from src.utils.model_stats import count_named_children_parameters, count_paramet
 from src.utils.seed import seed_everything
 
 
-MODEL_CHOICES = ["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"]
+MODEL_CHOICES = ["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "kan", "nafi", "kanfin", "kd_nafi"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -27,6 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
     parser.add_argument("--output-dir", default=None, help="Override output directory")
     parser.add_argument("--student-model", default="kd_nafi", choices=MODEL_CHOICES)
+    parser.add_argument("--epochs", type=int, default=None, help="Override number of training epochs")
     parser.add_argument(
         "--teacher",
         action="append",
@@ -59,7 +60,7 @@ def log_model_params(model_name: str, model, output_dir: str | Path) -> None:
         format_parameter_count(param_counts["trainable"]),
         format_parameter_count(param_counts["non_trainable"]),
     )
-    branch_param_counts = count_named_children_parameters(model, ["embedding", "nam", "fin"])
+    branch_param_counts = count_named_children_parameters(model, ["embedding", "nam", "kan", "fin"])
     for branch_name, counts in branch_param_counts.items():
         logger.info(
             "student_model=%s branch=%s total_params=%s trainable_params=%s non_trainable_params=%s",
@@ -87,6 +88,10 @@ def main() -> None:
         config.setdefault("paths", {})["processed_dir"] = args.processed_dir
     if args.output_dir:
         config.setdefault("paths", {})["output_dir"] = args.output_dir
+    if args.epochs is not None:
+        if args.epochs <= 0:
+            raise ValueError(f"--epochs must be positive, got {args.epochs}")
+        config.setdefault("training", {})["epochs"] = args.epochs
 
     distill_cfg = config.setdefault("distillation", {})
     distill_cfg["enabled"] = True

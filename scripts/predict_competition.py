@@ -25,7 +25,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", required=True, help="Path to trained best_model.pt")
     parser.add_argument("--output", required=True, help="Output submission CSV path")
     parser.add_argument("--test-gz", default=None, help="Override path to competition test.gz")
-    parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"])
+    parser.add_argument(
+        "--model",
+        default=None,
+        choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "kan", "nafi", "kanfin", "kd_nafi"],
+    )
     parser.add_argument("--chunksize", type=int, default=None, help="Rows per gzip chunk")
     parser.add_argument("--batch-size", type=int, default=None, help="Inference batch size")
     parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")

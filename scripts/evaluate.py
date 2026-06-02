@@ -13,7 +13,7 @@ from src.models.base import build_model
 from src.training.checkpoint import load_checkpoint
 from src.utils.config import ensure_dirs, load_config
 
-MODEL_CHOICES = ["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"]
+MODEL_CHOICES = ["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "kan", "nafi", "kanfin", "kd_nafi"]
 
 
 def parse_args() -> argparse.Namespace:

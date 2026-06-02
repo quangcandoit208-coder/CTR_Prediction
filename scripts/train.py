@@ -18,9 +18,14 @@ from src.utils.seed import seed_everything
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a CTR model.")
     parser.add_argument("--config", required=True, help="Path to YAML config")
-    parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"])
+    parser.add_argument(
+        "--model",
+        default=None,
+        choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "kan", "nafi", "kanfin", "kd_nafi"],
+    )
     parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
     parser.add_argument("--output-dir", default=None, help="Override output directory")
+    parser.add_argument("--epochs", type=int, default=None, help="Override number of training epochs")
     return parser.parse_args()
 
 
@@ -31,6 +36,10 @@ def main() -> None:
         config.setdefault("paths", {})["processed_dir"] = args.processed_dir
     if args.output_dir:
         config.setdefault("paths", {})["output_dir"] = args.output_dir
+    if args.epochs is not None:
+        if args.epochs <= 0:
+            raise ValueError(f"--epochs must be positive, got {args.epochs}")
+        config.setdefault("training", {})["epochs"] = args.epochs
     ensure_dirs(config)
     seed_everything(int(config.get("project", {}).get("seed", 42)))
     model_name = args.model or config.get("model", {}).get("name", "nafi")
@@ -71,7 +80,7 @@ def main() -> None:
         format_parameter_count(param_counts["trainable"]),
         format_parameter_count(param_counts["non_trainable"]),
     )
-    branch_param_counts = count_named_children_parameters(model, ["embedding", "nam", "fin"])
+    branch_param_counts = count_named_children_parameters(model, ["embedding", "nam", "kan", "fin"])
     for branch_name, counts in branch_param_counts.items():
         logger.info(
             "model=%s branch=%s total_params=%s trainable_params=%s non_trainable_params=%s",

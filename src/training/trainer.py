@@ -59,6 +59,45 @@ class CTRTrainer:
         self.best_auc = -float("inf")
         self.history: list[dict[str, float]] = []
 
+        kan_cfg = config.get("kan", {})
+        self.log_kan_input_stats = bool(kan_cfg.get("log_input_stats", False))
+        self.kan_input_stats_batches = max(0, int(kan_cfg.get("input_stats_batches", 5)))
+        self.kan_input_stats_quantiles = [
+            float(value) for value in kan_cfg.get("input_stats_quantiles", [0.001, 0.01, 0.5, 0.99, 0.999])
+        ]
+        self.kan_input_stats_path = self.output_dir / "metrics" / "kan_input_stats.jsonl"
+        self._kan_input_stats_logged = 0
+
+    def _base_model(self) -> nn.Module:
+        return self.model.module if isinstance(self.model, nn.DataParallel) else self.model
+
+    @torch.no_grad()
+    def _maybe_log_kan_input_stats(self, x: torch.Tensor, epoch: int, step: int) -> None:
+        if not self.log_kan_input_stats:
+            return
+        if self._kan_input_stats_logged >= self.kan_input_stats_batches:
+            return
+
+        base_model = self._base_model()
+        embedding = getattr(base_model, "embedding", None)
+        kan_branch = getattr(base_model, "kan", None)
+        compute_stats = getattr(kan_branch, "compute_input_stats", None)
+        if embedding is None or compute_stats is None:
+            self._kan_input_stats_logged = self.kan_input_stats_batches
+            return
+
+        embeddings = embedding(x)
+        stats = compute_stats(embeddings, self.kan_input_stats_quantiles)
+        stats["epoch"] = epoch
+        stats["step"] = step
+
+        self.kan_input_stats_path.parent.mkdir(parents=True, exist_ok=True)
+        mode = "w" if self._kan_input_stats_logged == 0 else "a"
+        with self.kan_input_stats_path.open(mode, encoding="utf-8") as f:
+            f.write(json.dumps(stats, sort_keys=True) + "\n")
+        self.logger.info("kan_input_stats=%s", stats)
+        self._kan_input_stats_logged += 1
+
     def train_one_epoch(self, epoch: int) -> dict[str, float]:
         started_at = time.perf_counter()
         self.model.train()
@@ -70,6 +109,7 @@ class CTRTrainer:
         for step, batch in enumerate(progress, start=1):
             x = batch["x"].to(self.device, non_blocking=True)
             y = batch["y"].to(self.device, non_blocking=True)
+            self._maybe_log_kan_input_stats(x, epoch, step)
             with torch.amp.autocast(device_type=self.device.type, enabled=self.use_amp):
                 output = self.model(x)
                 logits = output["logits"]

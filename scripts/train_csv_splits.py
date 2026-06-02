@@ -24,12 +24,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-csv", required=True, nargs="+", help="Train CSV file path(s)")
     parser.add_argument("--valid-csv", required=True, nargs="+", help="Valid CSV file path(s)")
     parser.add_argument("--test-csv", nargs="+", default=None, help="Optional labeled test CSV file path(s)")
-    parser.add_argument("--model", default=None, choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "nafi", "kd_nafi"])
+    parser.add_argument(
+        "--model",
+        default=None,
+        choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "kan", "nafi", "kanfin", "kd_nafi"],
+    )
     parser.add_argument("--chunksize", type=int, default=None, help="CSV rows per chunk")
     parser.add_argument("--batch-size", type=int, default=None, help="Training batch size")
     parser.add_argument("--num-workers", type=int, default=0, help="Use 0 for one large CSV to avoid repeated scans")
     parser.add_argument("--encoded", action="store_true", help="Set if CSV files are already numeric-encoded feature columns")
     parser.add_argument("--output-dir", default=None, help="Override output directory")
+    parser.add_argument("--epochs", type=int, default=None, help="Override number of training epochs")
     return parser.parse_args()
 
 
@@ -43,7 +48,7 @@ def log_model_params(model_name: str, model, output_dir: str | Path) -> None:
         format_parameter_count(param_counts["trainable"]),
         format_parameter_count(param_counts["non_trainable"]),
     )
-    branch_counts = count_named_children_parameters(model, ["embedding", "nam", "fin"])
+    branch_counts = count_named_children_parameters(model, ["embedding", "nam", "kan", "fin"])
     for branch_name, counts in branch_counts.items():
         logger.info(
             "model=%s branch=%s total_params=%s trainable_params=%s non_trainable_params=%s",
@@ -96,6 +101,10 @@ def main() -> None:
     config = load_config(args.config)
     if args.output_dir:
         config.setdefault("paths", {})["output_dir"] = args.output_dir
+    if args.epochs is not None:
+        if args.epochs <= 0:
+            raise ValueError(f"--epochs must be positive, got {args.epochs}")
+        config.setdefault("training", {})["epochs"] = args.epochs
     ensure_dirs(config)
     seed_everything(int(config.get("project", {}).get("seed", 42)))
 

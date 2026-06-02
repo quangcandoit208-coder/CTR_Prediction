@@ -7,6 +7,8 @@ from torch import nn
 from src.models.autoint import AutoInt
 from src.models.deepfm import DeepFM
 from src.models.fm import FM
+from src.models.kan import KAN
+from src.models.kanfin import KANFIN
 from src.models.kd_nafi import KDNAFI
 from src.models.lr import LR
 from src.models.nafi import NAFI
@@ -19,6 +21,7 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
     model_cfg = config.get("model", {})
     nam_cfg = config.get("nam", {})
     fin_cfg = config.get("fin", {})
+    kan_cfg = config.get("kan", {})
     embedding_dim = int(model_cfg.get("embedding_dim", 16))
     hidden_units = list(model_cfg.get("hidden_units", [128, 64, 32]))
     dropout = float(model_cfg.get("dropout", 0.2))
@@ -59,6 +62,18 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
             exu_max_value=exu_max_value,
             exu_weight_clip=exu_weight_clip,
         )
+    if name == "kan":
+        return KAN(
+            field_dims,
+            embedding_dim=embedding_dim,
+            grid_size=int(kan_cfg.get("grid_size", 5)),
+            grid_min=float(kan_cfg.get("grid_min", -2.0)),
+            grid_max=float(kan_cfg.get("grid_max", 2.0)),
+            dropout=float(kan_cfg.get("dropout", 0.0)),
+            use_base=bool(kan_cfg.get("use_base", True)),
+            init_scale=float(kan_cfg.get("init_scale", 0.01)),
+            share_mode=str(kan_cfg.get("share_mode", "field")),
+        )
     if name == "nafi":
         return NAFI(
             field_dims,
@@ -72,6 +87,22 @@ def build_model(name: str, field_dims: list[int], config: dict[str, Any]) -> nn.
             nam_activation=nam_activation,
             exu_max_value=exu_max_value,
             exu_weight_clip=exu_weight_clip,
+        )
+    if name in {"kanfin", "kan-fin", "kafi"}:
+        return KANFIN(
+            field_dims,
+            embedding_dim=embedding_dim,
+            kan_grid_size=int(kan_cfg.get("grid_size", 5)),
+            kan_grid_min=float(kan_cfg.get("grid_min", -2.0)),
+            kan_grid_max=float(kan_cfg.get("grid_max", 2.0)),
+            kan_dropout=float(kan_cfg.get("dropout", 0.0)),
+            kan_use_base=bool(kan_cfg.get("use_base", True)),
+            kan_init_scale=float(kan_cfg.get("init_scale", 0.01)),
+            kan_share_mode=str(kan_cfg.get("share_mode", "field")),
+            fin_num_heads=int(fin_cfg.get("num_heads", 4)),
+            fin_num_layers=int(fin_cfg.get("num_layers", 2)),
+            fin_dropout=float(fin_cfg.get("attention_dropout", 0.1)),
+            use_residual=bool(fin_cfg.get("use_residual", True)),
         )
     if name in {"kd_nafi", "kd-nafi"}:
         return KDNAFI(
