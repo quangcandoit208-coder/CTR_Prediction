@@ -19,6 +19,7 @@ def evaluate_model(model: torch.nn.Module, loader: DataLoader, config: dict[str,
     y_true: list[float] = []
     y_pred: list[float] = []
     y_pred_nam: list[float] = []
+    y_pred_kan: list[float] = []
     y_pred_fin: list[float] = []
     for batch in loader:
         x = batch["x"].to(device, non_blocking=True)
@@ -30,6 +31,8 @@ def evaluate_model(model: torch.nn.Module, loader: DataLoader, config: dict[str,
         y_true.extend(y.detach().float().cpu().numpy().tolist())
         if "nam_logits" in output:
             y_pred_nam.extend(torch.sigmoid(output["nam_logits"]).detach().float().cpu().numpy().tolist())
+        if "kan_logits" in output:
+            y_pred_kan.extend(torch.sigmoid(output["kan_logits"]).detach().float().cpu().numpy().tolist())
         if "fin_logits" in output:
             y_pred_fin.extend(torch.sigmoid(output["fin_logits"]).detach().float().cpu().numpy().tolist())
 
@@ -43,6 +46,11 @@ def evaluate_model(model: torch.nn.Module, loader: DataLoader, config: dict[str,
         metrics["nam_logloss"] = compute_logloss(y_true, y_pred_nam)
         metrics["auc_gain_over_nam"] = metrics["auc"] - metrics["nam_auc"]
         metrics["logloss_gain_over_nam"] = metrics["nam_logloss"] - metrics["logloss"]
+    if y_pred_kan:
+        metrics["kan_auc"] = compute_auc(y_true, y_pred_kan)
+        metrics["kan_logloss"] = compute_logloss(y_true, y_pred_kan)
+        metrics["auc_gain_over_kan"] = metrics["auc"] - metrics["kan_auc"]
+        metrics["logloss_gain_over_kan"] = metrics["kan_logloss"] - metrics["logloss"]
     if y_pred_fin:
         metrics["fin_auc"] = compute_auc(y_true, y_pred_fin)
         metrics["fin_logloss"] = compute_logloss(y_true, y_pred_fin)

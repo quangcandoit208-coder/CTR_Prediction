@@ -651,6 +651,12 @@ Nếu `phi` là spline nhỏ với `G` coefficient:
 P_\phi \approx G + 2
 ```
 
+Trong implementation hiện tại của project, `kan.degree` điều khiển bậc spline. `degree=1` giữ behavior cũ là piecewise-linear interpolation; `degree=3` dùng cubic B-spline basis. Khi `degree > 1`, số basis của mỗi hàm scalar là xấp xỉ:
+
+```math
+G_{\text{basis}} = grid\_size + degree - 1
+```
+
 Trong khi NAM per-field MLP có tham số khoảng:
 
 ```math

@@ -150,9 +150,11 @@ class CTRTrainer:
         y_true: list[float] = []
         y_pred: list[float] = []
         y_pred_nam: list[float] = []
+        y_pred_kan: list[float] = []
         y_pred_fin: list[float] = []
         losses: list[float] = []
         nam_losses: list[float] = []
+        kan_losses: list[float] = []
         fin_losses: list[float] = []
 
         for batch in tqdm(self.valid_loader, desc="valid", leave=False):
@@ -171,6 +173,10 @@ class CTRTrainer:
                 nam_logits = output["nam_logits"]
                 y_pred_nam.extend(torch.sigmoid(nam_logits).detach().float().cpu().numpy().tolist())
                 nam_losses.append(float(self.criterion(nam_logits, y).detach().cpu()))
+            if "kan_logits" in output:
+                kan_logits = output["kan_logits"]
+                y_pred_kan.extend(torch.sigmoid(kan_logits).detach().float().cpu().numpy().tolist())
+                kan_losses.append(float(self.criterion(kan_logits, y).detach().cpu()))
             if "fin_logits" in output:
                 fin_logits = output["fin_logits"]
                 y_pred_fin.extend(torch.sigmoid(fin_logits).detach().float().cpu().numpy().tolist())
@@ -188,6 +194,12 @@ class CTRTrainer:
             metrics["valid_nam_logloss"] = compute_logloss(y_true, y_pred_nam)
             metrics["valid_auc_gain_over_nam"] = metrics["valid_auc"] - metrics["valid_nam_auc"]
             metrics["valid_logloss_gain_over_nam"] = metrics["valid_nam_logloss"] - metrics["valid_logloss"]
+        if y_pred_kan:
+            metrics["valid_kan_loss"] = float(np.mean(kan_losses)) if kan_losses else float("nan")
+            metrics["valid_kan_auc"] = compute_auc(y_true, y_pred_kan)
+            metrics["valid_kan_logloss"] = compute_logloss(y_true, y_pred_kan)
+            metrics["valid_auc_gain_over_kan"] = metrics["valid_auc"] - metrics["valid_kan_auc"]
+            metrics["valid_logloss_gain_over_kan"] = metrics["valid_kan_logloss"] - metrics["valid_logloss"]
         if y_pred_fin:
             metrics["valid_fin_loss"] = float(np.mean(fin_losses)) if fin_losses else float("nan")
             metrics["valid_fin_auc"] = compute_auc(y_true, y_pred_fin)

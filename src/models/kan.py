@@ -21,6 +21,7 @@ class SharedScalarKANLayer(nn.Module):
     def __init__(
         self,
         grid_size: int = 5,
+        degree: int = 1,
         grid_min: float = -2.0,
         grid_max: float = 2.0,
         use_base: bool = True,
@@ -29,16 +30,21 @@ class SharedScalarKANLayer(nn.Module):
         super().__init__()
         if grid_size < 2:
             raise ValueError(f"grid_size must be >= 2, got {grid_size}")
+        if degree < 1:
+            raise ValueError(f"degree must be >= 1, got {degree}")
         if grid_min >= grid_max:
             raise ValueError(f"grid_min must be smaller than grid_max, got {grid_min} >= {grid_max}")
 
         self.grid_size = int(grid_size)
+        self.degree = int(degree)
+        self.num_basis = self.grid_size if self.degree == 1 else self.grid_size + self.degree - 1
         self.use_base = bool(use_base)
         self.register_buffer("grid_min", torch.tensor(float(grid_min)))
         self.register_buffer("grid_max", torch.tensor(float(grid_max)))
         self.register_buffer("grid_step", torch.tensor(float(grid_max - grid_min) / float(grid_size - 1)))
+        self.register_buffer("knots", self._make_open_uniform_knots(grid_min, grid_max, self.num_basis, self.degree))
 
-        self.spline_weight = nn.Parameter(torch.empty(self.grid_size))
+        self.spline_weight = nn.Parameter(torch.empty(self.num_basis))
         if self.use_base:
             self.base_weight = nn.Parameter(torch.ones(()))
         else:
@@ -52,21 +58,62 @@ class SharedScalarKANLayer(nn.Module):
             self.base_weight.data.fill_(1.0)
         self.bias.data.zero_()
 
+    @staticmethod
+    def _make_open_uniform_knots(grid_min: float, grid_max: float, num_basis: int, degree: int) -> torch.Tensor:
+        interior_count = num_basis - degree - 1
+        if interior_count > 0:
+            interior = torch.linspace(float(grid_min), float(grid_max), interior_count + 2)[1:-1]
+        else:
+            interior = torch.empty(0)
+        left = torch.full((degree + 1,), float(grid_min))
+        right = torch.full((degree + 1,), float(grid_max))
+        return torch.cat([left, interior, right])
+
+    def _bspline_basis(self, x: torch.Tensor) -> torch.Tensor:
+        knots = self.knots.to(device=x.device, dtype=x.dtype)
+        x_col = x.unsqueeze(-1)
+        basis = ((x_col >= knots[:-1]) & (x_col < knots[1:])).to(x.dtype)
+
+        for degree in range(1, self.degree + 1):
+            num_basis = basis.size(-1) - 1
+            left_den = knots[degree : degree + num_basis] - knots[:num_basis]
+            right_den = knots[degree + 1 : degree + 1 + num_basis] - knots[1 : 1 + num_basis]
+
+            left_num = x_col - knots[:num_basis]
+            right_num = knots[degree + 1 : degree + 1 + num_basis] - x_col
+
+            left_coef = torch.where(left_den > 0, left_num / left_den.clamp_min(torch.finfo(x.dtype).eps), 0.0)
+            right_coef = torch.where(right_den > 0, right_num / right_den.clamp_min(torch.finfo(x.dtype).eps), 0.0)
+            basis = left_coef * basis[:, :num_basis] + right_coef * basis[:, 1 : num_basis + 1]
+
+        left_endpoint = x <= self.grid_min.to(device=x.device, dtype=x.dtype)
+        right_endpoint = x >= self.grid_max.to(device=x.device, dtype=x.dtype)
+        if left_endpoint.any():
+            basis[left_endpoint] = 0.0
+            basis[left_endpoint, 0] = 1.0
+        if right_endpoint.any():
+            basis[right_endpoint] = 0.0
+            basis[right_endpoint, -1] = 1.0
+        return basis
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         grid_min = self.grid_min.to(device=x.device, dtype=x.dtype)
         grid_max = self.grid_max.to(device=x.device, dtype=x.dtype)
         grid_step = self.grid_step.to(device=x.device, dtype=x.dtype)
 
         clipped = torch.minimum(torch.maximum(x, grid_min), grid_max)
-        position = (clipped - grid_min) / grid_step
-        lower_idx = torch.floor(position).to(torch.long).clamp(min=0, max=self.grid_size - 2)
-        upper_idx = lower_idx + 1
-        frac = (position - lower_idx.to(position.dtype)).clamp(0.0, 1.0)
-
         spline_weight = self.spline_weight.to(dtype=x.dtype)
-        lower = spline_weight[lower_idx]
-        upper = spline_weight[upper_idx]
-        out = lower * (1.0 - frac) + upper * frac
+        if self.degree == 1:
+            position = (clipped - grid_min) / grid_step
+            lower_idx = torch.floor(position).to(torch.long).clamp(min=0, max=self.grid_size - 2)
+            upper_idx = lower_idx + 1
+            frac = (position - lower_idx.to(position.dtype)).clamp(0.0, 1.0)
+            lower = spline_weight[lower_idx]
+            upper = spline_weight[upper_idx]
+            out = lower * (1.0 - frac) + upper * frac
+        else:
+            basis = self._bspline_basis(clipped.reshape(-1))
+            out = torch.matmul(basis, spline_weight).reshape_as(x)
 
         if self.base_weight is not None:
             out = out + self.base_weight.to(dtype=x.dtype) * F.silu(x)
@@ -85,6 +132,7 @@ class KANBranch(nn.Module):
         num_fields: int,
         embedding_dim: int,
         grid_size: int = 5,
+        degree: int = 1,
         grid_min: float = -2.0,
         grid_max: float = 2.0,
         dropout: float = 0.0,
@@ -108,6 +156,7 @@ class KANBranch(nn.Module):
             [
                 SharedScalarKANLayer(
                     grid_size=grid_size,
+                    degree=degree,
                     grid_min=grid_min,
                     grid_max=grid_max,
                     use_base=use_base,
@@ -150,6 +199,9 @@ class KANBranch(nn.Module):
             "num_fields": self.num_fields,
             "embedding_dim": self.embedding_dim,
             "share_mode": self.share_mode,
+            "grid_size": self.scalar_kans[0].grid_size,
+            "degree": self.scalar_kans[0].degree,
+            "num_basis": self.scalar_kans[0].num_basis,
             "num_values": int(flat.numel()),
             "min": float(flat.min().detach().cpu()),
             "max": float(flat.max().detach().cpu()),
@@ -200,6 +252,7 @@ class KAN(nn.Module):
         field_dims: list[int],
         embedding_dim: int = 16,
         grid_size: int = 5,
+        degree: int = 1,
         grid_min: float = -2.0,
         grid_max: float = 2.0,
         dropout: float = 0.0,
@@ -213,6 +266,7 @@ class KAN(nn.Module):
             len(field_dims),
             embedding_dim,
             grid_size=grid_size,
+            degree=degree,
             grid_min=grid_min,
             grid_max=grid_max,
             dropout=dropout,
