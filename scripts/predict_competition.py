@@ -11,6 +11,7 @@ import torch
 from src.data.preprocess import clean_chunk
 from src.data.metadata import load_metadata
 from src.data.schema import DTYPE_MAP
+from src.features.encoding import encode_features
 from src.features.hashing import hash_features
 from src.models.base import build_model
 from src.training.checkpoint import load_checkpoint
@@ -80,6 +81,8 @@ def main() -> None:
     chunksize = int(args.chunksize or data_cfg.get("chunksize", 250000))
     batch_size = int(args.batch_size or config.get("training", {}).get("batch_size", 2048))
     feature_cols = metadata["feature_cols"]
+    hash_cols = list(metadata.get("hash_cols", feature_cfg.get("hash_cols", ["device_ip", "device_id"])))
+    category_maps = metadata.get("category_maps", {})
 
     model_name = args.model or config.get("model", {}).get("name", "nafi")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -111,13 +114,25 @@ def main() -> None:
         inference_cfg["data"] = dict(data_cfg)
         inference_cfg["data"]["drop_id"] = True
         chunk = clean_chunk(chunk, inference_cfg)
-        chunk = hash_features(
-            chunk,
-            feature_cols=feature_cols,
-            hash_buckets=feature_cfg.get("hash_buckets", {}),
-            default_bucket=int(feature_cfg.get("hash_bucket_default", 100000)),
-            seed=int(project_cfg.get("seed", 42)),
-        )
+        if category_maps:
+            chunk = encode_features(
+                chunk,
+                feature_cols=feature_cols,
+                hash_buckets=feature_cfg.get("hash_buckets", {}),
+                default_bucket=int(feature_cfg.get("hash_bucket_default", 100000)),
+                seed=int(project_cfg.get("seed", 42)),
+                hash_cols=hash_cols,
+                category_maps=category_maps,
+                update_category_maps=False,
+            )
+        else:
+            chunk = hash_features(
+                chunk,
+                feature_cols=feature_cols,
+                hash_buckets=feature_cfg.get("hash_buckets", {}),
+                default_bucket=int(feature_cfg.get("hash_bucket_default", 100000)),
+                seed=int(project_cfg.get("seed", 42)),
+            )
 
         missing = [col for col in feature_cols if col not in chunk.columns]
         if missing:

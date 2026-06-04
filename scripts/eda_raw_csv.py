@@ -241,7 +241,7 @@ def main() -> None:
 
     feature_cols = get_feature_cols(config)
     base_columns = [col for col in AVAZU_COLUMNS if col != "id"]
-    expected_cols = [col for col in base_columns + feature_cols if col not in {"id"}]
+    expected_cols = list(dict.fromkeys(col for col in base_columns + feature_cols if col not in {"id"}))
 
     dtype_map = {key: value for key, value in DTYPE_MAP.items() if key != target_col}
     if target_col in DTYPE_MAP:

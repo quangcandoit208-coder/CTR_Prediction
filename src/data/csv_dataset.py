@@ -10,7 +10,8 @@ from torch.utils.data import IterableDataset, get_worker_info
 
 from src.data.preprocess import clean_chunk
 from src.data.schema import DTYPE_MAP
-from src.features.hashing import hash_features
+from src.features.encoding import encode_features, init_category_maps
+from src.features.feature_map import get_hash_cols
 
 
 class AvazuCSVChunkDataset(IterableDataset):
@@ -37,6 +38,9 @@ class AvazuCSVChunkDataset(IterableDataset):
         self.shuffle_files = shuffle_files
         self.shuffle_rows = shuffle_rows
         self.seed = seed
+        use_hashing = bool(config.get("data", {}).get("use_hashing", True))
+        self.hash_cols = get_hash_cols(config, feature_cols) if use_hashing and not encoded else []
+        self.category_maps = init_category_maps(feature_cols, self.hash_cols) if use_hashing and not encoded else {}
 
     def _worker_files(self) -> list[str]:
         worker = get_worker_info()
@@ -58,12 +62,15 @@ class AvazuCSVChunkDataset(IterableDataset):
             df = clean_chunk(chunk, self.config)
             feature_cfg = self.config.get("features", {})
             project_cfg = self.config.get("project", {})
-            df = hash_features(
+            df = encode_features(
                 df,
                 feature_cols=self.feature_cols,
                 hash_buckets=feature_cfg.get("hash_buckets", {}),
                 default_bucket=int(feature_cfg.get("hash_bucket_default", 100000)),
                 seed=int(project_cfg.get("seed", 42)),
+                hash_cols=self.hash_cols,
+                category_maps=self.category_maps,
+                update_category_maps=True,
             )
 
         missing = [col for col in self.feature_cols + [self.target_col] if col not in df.columns]
@@ -87,4 +94,3 @@ class AvazuCSVChunkDataset(IterableDataset):
                 y = torch.as_tensor(df[self.target_col].to_numpy(), dtype=torch.float32)
                 for row_x, row_y in zip(x, y):
                     yield row_x, row_y
-

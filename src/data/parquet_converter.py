@@ -10,8 +10,8 @@ import pandas as pd
 from src.data.chunk_reader import GzipChunkReader
 from src.data.preprocess import clean_chunk
 from src.data.schema import DTYPE_MAP
-from src.features.feature_map import build_field_dims, get_feature_cols
-from src.features.hashing import hash_features
+from src.features.encoding import encode_features, init_category_maps
+from src.features.feature_map import build_field_dims, get_feature_cols, get_hash_cols
 from src.utils.logger import get_logger
 from src.utils.memory import log_memory_usage
 
@@ -49,13 +49,14 @@ def convert_gz_to_parquet(raw_path: str | Path, output_dir: str | Path, config: 
     project_cfg = config.get("project", {})
     feature_cfg = config.get("features", {})
     feature_cols = get_feature_cols(config)
-    field_dims = build_field_dims(feature_cols, config)
     target_col = data_cfg.get("target_col", "click")
     chunksize = int(data_cfg.get("chunksize", 250000))
     max_rows = data_cfg.get("max_rows")
     train_ratio = float(data_cfg.get("train_ratio", 0.8))
     valid_ratio = float(data_cfg.get("valid_ratio", 0.1))
     use_hashing = bool(data_cfg.get("use_hashing", True))
+    hash_cols = get_hash_cols(config, feature_cols) if use_hashing else []
+    category_maps = init_category_maps(feature_cols, hash_cols) if use_hashing else {}
 
     split_counts = {"train": 0, "valid": 0, "test": 0}
     split_files: dict[str, list[str]] = {"train": [], "valid": [], "test": []}
@@ -80,12 +81,15 @@ def convert_gz_to_parquet(raw_path: str | Path, output_dir: str | Path, config: 
 
         chunk = clean_chunk(chunk, config)
         if use_hashing:
-            chunk = hash_features(
+            chunk = encode_features(
                 chunk,
                 feature_cols=feature_cols,
                 hash_buckets=feature_cfg.get("hash_buckets", {}),
                 default_bucket=int(feature_cfg.get("hash_bucket_default", 100000)),
                 seed=int(project_cfg.get("seed", 42)),
+                hash_cols=hash_cols,
+                category_maps=category_maps,
+                update_category_maps=True,
             )
 
         missing = [col for col in feature_cols + [target_col] if col not in chunk.columns]
@@ -112,9 +116,12 @@ def convert_gz_to_parquet(raw_path: str | Path, output_dir: str | Path, config: 
         logger.info("converted_chunk=%d total_rows=%d split_counts=%s", chunk_idx, total_rows, split_counts)
         log_memory_usage(logger, prefix=f"convert_chunk_{chunk_idx}")
 
+    field_dims = build_field_dims(feature_cols, config, category_maps=category_maps if use_hashing else None)
     metadata = {
         "feature_cols": feature_cols,
         "field_dims": field_dims,
+        "hash_cols": hash_cols,
+        "category_maps": category_maps,
         "target_col": target_col,
         "split_files": split_files,
         "split_counts": split_counts,

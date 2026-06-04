@@ -9,8 +9,8 @@ import pandas as pd
 
 from src.data.preprocess import clean_chunk
 from src.data.schema import DTYPE_MAP
-from src.features.feature_map import build_field_dims, get_feature_cols
-from src.features.hashing import hash_features
+from src.features.encoding import encode_features, init_category_maps
+from src.features.feature_map import build_field_dims, get_feature_cols, get_hash_cols
 from src.utils.logger import get_logger
 from src.utils.memory import log_memory_usage
 
@@ -21,6 +21,8 @@ def _prepare_csv_chunk(
     feature_cols: list[str],
     target_col: str,
     encoded: bool,
+    category_maps: dict[str, dict[str, int]] | None,
+    hash_cols: list[str],
 ) -> pd.DataFrame:
     if encoded:
         df = chunk.copy()
@@ -34,12 +36,15 @@ def _prepare_csv_chunk(
         if config.get("data", {}).get("use_hashing", True):
             feature_cfg = config.get("features", {})
             project_cfg = config.get("project", {})
-            df = hash_features(
+            df = encode_features(
                 df,
                 feature_cols=feature_cols,
                 hash_buckets=feature_cfg.get("hash_buckets", {}),
                 default_bucket=int(feature_cfg.get("hash_bucket_default", 100000)),
                 seed=int(project_cfg.get("seed", 42)),
+                hash_cols=hash_cols,
+                category_maps=category_maps,
+                update_category_maps=True,
             )
 
     missing = [col for col in feature_cols + [target_col] if col not in df.columns]
@@ -73,10 +78,12 @@ def convert_csv_splits_to_parquet(
 
     data_cfg = config.get("data", {})
     feature_cols = get_feature_cols(config)
-    field_dims = build_field_dims(feature_cols, config)
     target_col = data_cfg.get("target_col", "click")
     chunksize = int(chunksize or data_cfg.get("chunksize", 250000))
     max_rows = data_cfg.get("max_rows")
+    use_hashing = bool(data_cfg.get("use_hashing", True))
+    hash_cols = get_hash_cols(config, feature_cols) if use_hashing and not encoded else []
+    category_maps = init_category_maps(feature_cols, hash_cols) if use_hashing and not encoded else {}
 
     split_files: dict[str, list[str]] = {split: [] for split in split_paths}
     split_counts: dict[str, int] = {split: 0 for split in split_paths}
@@ -101,7 +108,15 @@ def convert_csv_splits_to_parquet(
                         break
                     chunk = chunk.iloc[:remaining].copy()
 
-                df = _prepare_csv_chunk(chunk, config, feature_cols, target_col, encoded=encoded)
+                df = _prepare_csv_chunk(
+                    chunk,
+                    config,
+                    feature_cols,
+                    target_col,
+                    encoded=encoded,
+                    category_maps=category_maps,
+                    hash_cols=hash_cols,
+                )
                 part_path = output_dir / split / f"{split}_part_{part_idx:05d}.parquet"
                 if part_path.exists() and not force:
                     logger.info("resume_skip_existing_part=%s", part_path)
@@ -123,9 +138,16 @@ def convert_csv_splits_to_parquet(
 
                 part_idx += 1
 
+    field_dims = build_field_dims(
+        feature_cols,
+        config,
+        category_maps=category_maps if use_hashing and not encoded else None,
+    )
     metadata = {
         "feature_cols": feature_cols,
         "field_dims": field_dims,
+        "hash_cols": hash_cols,
+        "category_maps": category_maps,
         "target_col": target_col,
         "split_files": split_files,
         "split_counts": split_counts,
@@ -138,4 +160,3 @@ def convert_csv_splits_to_parquet(
         json.dump(metadata, f, indent=2)
     logger.info("csv_split_conversion_done metadata=%s", metadata_path)
     return metadata
-

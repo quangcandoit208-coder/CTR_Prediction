@@ -61,6 +61,9 @@ features:
     - day
     - hour_of_day
     - weekday
+  hash_cols:
+    - device_id
+    - device_ip
   hash_bucket_default: 100000
   hash_buckets:
     device_ip: 1000000
