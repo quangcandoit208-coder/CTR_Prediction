@@ -59,7 +59,9 @@ class CTRTrainer:
         self.best_auc = -float("inf")
         self.history: list[dict[str, float]] = []
 
-        kan_cfg = config.get("kan", {})
+        model_class_name = model.__class__.__name__.lower()
+        kan_section = "kan_v2" if "v2" in model_class_name else "kan"
+        kan_cfg = config.get(kan_section, config.get("kan", {}))
         self.log_kan_input_stats = bool(kan_cfg.get("log_input_stats", False))
         self.kan_input_stats_batches = max(0, int(kan_cfg.get("input_stats_batches", 5)))
         self.kan_input_stats_quantiles = [

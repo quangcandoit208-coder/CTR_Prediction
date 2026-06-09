@@ -18,7 +18,20 @@ from src.utils.model_stats import count_named_children_parameters, count_paramet
 from src.utils.seed import seed_everything
 
 
-MODEL_CHOICES = ["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "kan", "nafi", "kanfin", "kd_nafi"]
+MODEL_CHOICES = [
+    "lr",
+    "fm",
+    "deepfm",
+    "xdeepfm",
+    "autoint",
+    "nam",
+    "kan",
+    "kan_v2",
+    "nafi",
+    "kanfin",
+    "kanfin_v2",
+    "kd_nafi",
+]
 
 
 def parse_args() -> argparse.Namespace:

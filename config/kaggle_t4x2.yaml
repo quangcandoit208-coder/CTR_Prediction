@@ -120,6 +120,19 @@ kan:
   input_stats_batches: 5
   input_stats_quantiles: [0.001, 0.01, 0.5, 0.99, 0.999]
 
+kan_v2:
+  enabled: true
+  grid_size: 5
+  degree: 2
+  grid_min: -0.8
+  grid_max: 0.8
+  dropout: 0.0
+  use_base: true
+  init_scale: 0.01
+  log_input_stats: true
+  input_stats_batches: 5
+  input_stats_quantiles: [0.001, 0.01, 0.5, 0.99, 0.999]
+
 fin:
   enabled: true
   num_heads: 4

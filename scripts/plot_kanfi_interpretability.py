@@ -23,7 +23,7 @@ from src.training.checkpoint import load_checkpoint
 from src.utils.config import ensure_dirs, load_config
 
 
-MODEL_CHOICES = ["kan", "kanfin", "kan-fin", "kafi"]
+MODEL_CHOICES = ["kan", "kan_v2", "kanfin", "kan-fin", "kafi", "kanfin_v2", "kanfin-v2", "kafi_v2"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -49,7 +49,7 @@ def get_kan_branch(model: nn.Module) -> nn.Module:
     base_model = unwrap_model(model)
     kan_branch = getattr(base_model, "kan", None)
     if kan_branch is None:
-        raise ValueError("Model does not expose a KAN branch named 'kan'. Use --model kan or --model kanfin.")
+        raise ValueError("Model does not expose a KAN branch named 'kan'. Use a KAN or KANFIN model.")
     return kan_branch
 
 
@@ -71,23 +71,25 @@ def contribution_summary(values: np.ndarray, feature_names: list[str]) -> tuple[
     return order, summary
 
 
-def get_kan_parameters(kan_branch: nn.Module) -> dict[str, np.ndarray | float | int | str]:
+def get_kan_parameters(kan_branch: nn.Module) -> dict[str, Any]:
     scalar_kans = getattr(kan_branch, "scalar_kans", None)
     if scalar_kans is None or len(scalar_kans) == 0:
         raise ValueError("KAN branch does not expose scalar_kans.")
     first_scalar = scalar_kans[0]
-    return {
+    result: dict[str, Any] = {
         "share_mode": str(getattr(kan_branch, "share_mode", "unknown")),
+        "topology": str(getattr(kan_branch, "topology", "weighted_field_aggregation")),
         "grid_size": int(getattr(first_scalar, "grid_size", 0)),
         "degree": int(getattr(first_scalar, "degree", 1)),
         "num_basis": int(getattr(first_scalar, "num_basis", 0)),
         "grid_min": float(first_scalar.grid_min.detach().cpu()),
         "grid_max": float(first_scalar.grid_max.detach().cpu()),
-        "dim_weight": kan_branch.dim_weight.detach().float().cpu().numpy(),
-        "field_weight": kan_branch.field_weight.detach().float().cpu().numpy(),
-        "field_bias": kan_branch.field_bias.detach().float().cpu().numpy(),
         "branch_bias": float(kan_branch.bias.detach().float().cpu().squeeze()),
     }
+    for name in ("dim_weight", "field_weight", "field_bias"):
+        value = getattr(kan_branch, name, None)
+        result[name] = None if value is None else value.detach().float().cpu().numpy()
+    return result
 
 
 def plot_kan_feature_weights(
@@ -103,10 +105,12 @@ def plot_kan_feature_weights(
     order = np.argsort(mean_abs_contribution)[::-1][:top_features]
     labels = [feature_names[idx] for idx in order]
 
-    field_weight = np.asarray(kan_params["field_weight"])
-    field_bias = np.asarray(kan_params["field_bias"])
+    field_weight = kan_params["field_weight"]
+    field_bias = kan_params["field_bias"]
+    has_field_aggregation = field_weight is not None and field_bias is not None
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
+    rows = 2 if has_field_aggregation else 1
+    fig, axes = plt.subplots(rows, 2, figsize=(14, 4.5 * rows))
     axes = axes.ravel()
 
     axes[0].bar(labels, importance[order] * 100.0)
@@ -119,15 +123,18 @@ def plot_kan_feature_weights(
     axes[1].set_title("Mean Signed Contribution")
     axes[1].set_ylabel("logit contribution")
 
-    axes[2].bar(labels, field_weight[order])
-    axes[2].axhline(0.0, color="black", linewidth=0.8)
-    axes[2].set_title("Learned Field Weight")
-    axes[2].set_ylabel("field_weight")
+    if has_field_aggregation:
+        field_weight = np.asarray(field_weight)
+        field_bias = np.asarray(field_bias)
+        axes[2].bar(labels, field_weight[order])
+        axes[2].axhline(0.0, color="black", linewidth=0.8)
+        axes[2].set_title("Learned Field Weight")
+        axes[2].set_ylabel("field_weight")
 
-    axes[3].bar(labels, field_bias[order])
-    axes[3].axhline(0.0, color="black", linewidth=0.8)
-    axes[3].set_title("Learned Field Bias")
-    axes[3].set_ylabel("field_bias")
+        axes[3].bar(labels, field_bias[order])
+        axes[3].axhline(0.0, color="black", linewidth=0.8)
+        axes[3].set_title("Learned Field Bias")
+        axes[3].set_ylabel("field_bias")
 
     for axis in axes:
         axis.tick_params(axis="x", rotation=60)
@@ -150,8 +157,9 @@ def plot_kan_schematic(
     mean_abs_contribution = np.abs(contributions).mean(axis=0)
     importance = mean_abs_contribution / (mean_abs_contribution.sum() + 1e-12)
     order = np.argsort(mean_abs_contribution)[::-1][:top_features]
-    field_weight = np.asarray(kan_params["field_weight"])
+    field_weight = kan_params["field_weight"]
     share_mode = str(kan_params["share_mode"])
+    topology = str(kan_params["topology"])
 
     height = max(6.0, 0.48 * len(order) + 2.0)
     fig, ax = plt.subplots(figsize=(13, height))
@@ -175,16 +183,17 @@ def plot_kan_schematic(
         ax.plot([1.53, 2.57], [y, y], color=color, linewidth=width, alpha=0.55)
         ax.text(-0.08, y, feature_names[idx], ha="right", va="center", fontsize=9)
         ax.text(1.35, y, phi_name, ha="center", va="center", fontsize=8)
+        suffix = "" if field_weight is None else f" | w={np.asarray(field_weight)[idx]:+.3f}"
         ax.text(
             2.92,
             y,
-            f"{importance[idx] * 100:.2f}% | mean={mean_contribution[idx]:+.4f} | w={field_weight[idx]:+.3f}",
+            f"{importance[idx] * 100:.2f}% | mean={mean_contribution[idx]:+.4f}{suffix}",
             ha="left",
             va="center",
             fontsize=8,
         )
 
-    title = f"KAN Branch Schematic ({share_mode=}, top {len(order)} by mean |contribution|)"
+    title = f"KAN Branch Schematic ({share_mode=}, {topology=}, top {len(order)} by mean |contribution|)"
     ax.set_title(title, pad=20)
     fig.tight_layout()
     fig.savefig(output_path)
@@ -285,6 +294,7 @@ def main() -> None:
         "max_batches": args.max_batches,
         "kan": {
             "share_mode": kan_params["share_mode"],
+            "topology": kan_params["topology"],
             "grid_size": kan_params["grid_size"],
             "degree": kan_params["degree"],
             "num_basis": kan_params["num_basis"],

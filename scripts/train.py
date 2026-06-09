@@ -21,7 +21,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         default=None,
-        choices=["lr", "fm", "deepfm", "xdeepfm", "autoint", "nam", "kan", "nafi", "kanfin", "kd_nafi"],
+        choices=[
+            "lr",
+            "fm",
+            "deepfm",
+            "xdeepfm",
+            "autoint",
+            "nam",
+            "kan",
+            "kan_v2",
+            "nafi",
+            "kanfin",
+            "kanfin_v2",
+            "kd_nafi",
+        ],
     )
     parser.add_argument("--processed-dir", default=None, help="Override processed parquet directory")
     parser.add_argument("--output-dir", default=None, help="Override output directory")
