@@ -11,6 +11,8 @@ Use the Kaggle Avazu Click-Through Rate Prediction dataset. The main input is:
 ```
 
 The pipeline never loads the full gzip file into memory. It reads chunks, preprocesses each chunk, hashes high-cardinality categorical fields, and writes parquet partitions.
+## Method
+![Method](docs/images/kanfin_v2_architecture.png)
 
 ## Structure
 
